@@ -3,19 +3,94 @@
 
 <PageTitle>Home</PageTitle>
 
+<input type="number" @bind="InputPlayers" placeholder="Enter a integer less than 53 but more than 1" style="width:500px; height: 20px;" min="2" max="52" />
+<button @onclick="SubmitInput" disabled="@(!IsValidInput)">Submit</button>
 
+@if (!IsValidInput && !string.IsNullOrEmpty(InputPlayers))
+{
+    <p style="color:red;">Please enter a valid integer less than 53 and more than 1.</p>
+    
+}
+<button @onclick="TestButton">test button method</button>
 
-<h1>Hello, world!</h1>
+<br/>
 
-Welcome to your new app.
+@if (_playerHands.HandQueue.Count > 0)
+{
+    <h3> Players:</h3>
+    <ul>
+        @foreach (var playerName in _playerHands.HandQueue)
+        {
+            <li> @playerName.Key: @playerName.Value.Cards.Count </li>
+        }
+    </ul>
+}
 
-<p> @test.Suit</p>
+<br/>
+
+<button @onclick="BeginRound"> AHHHHHHH</button>
+
 
 
 @code {
-
-    new Card test = new Card(2, 10);
+    private string InputPlayers;
+    private bool IsValidInput => int.TryParse(InputPlayers, out int number) && number >= 2 && number < 53;
+    private Deck _deck = new Deck();
+    private PlayerHands _playerHands = new PlayerHands();
+    private Players _players = new Players();
+    private PlayedCards _playedCards = new PlayedCards();
     
+    // FOR TESTING
+    public int testCount = 0;
+    // DELETE ABOVE WHEN FINISHED
     
+    public int PlayerCount;
 
+    private void SubmitInput()
+    {
+        if (IsValidInput)
+        {
+            PlayerCount = int.Parse(InputPlayers);
+            CreateHands(PlayerCount);
+        }
+    }
+
+    private void CreateHands(int PlayerCount)
+    {
+        // Clear previous hands
+        _playerHands.HandQueue.Clear();
+    
+        for (int i = 0; i < PlayerCount; i++)
+        {
+            string playerName = _players.PlayerNames[i + 1];
+            _playerHands.AddPlayer(playerName);
+        
+            // Each player gets their cards directly here
+            _deck.AddToHand(_playerHands.HandQueue[playerName], PlayerCount);
+        }
+    }
+
+    private void TestButton()
+    {
+        testCount = _playerHands.HandQueue.Count;
+        Console.WriteLine(testCount);
+    }
+
+    private void BeginRound()
+    {
+        for (int i = 0; i < PlayerCount; i++)
+        {
+            string playerName = _players.PlayerNames[i + 1];
+            Card cardPulled = _playerHands.HandQueue[playerName].Cards.Dequeue();
+            
+            _playedCards.AddToPlayedHand(playerName, cardPulled);
+            Console.WriteLine($"Name: {playerName} Card: {cardPulled.Suit} Rank: {cardPulled.Rank} ");
+        }
+
+        Card winner = _playedCards.DetermineWinner();
+        
+        Console.WriteLine($"Suit: {winner.Suit} | Rank: {winner.Rank}");
+        
+        _playedCards.ClearPlay();
+    }
 }

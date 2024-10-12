@@ -10,7 +10,6 @@ public class Card
         { 4, "Clubs" }
     };
     public int Rank { get; set; }
-    
     public string Suit { get; set; }
 
     public Card(int suitKey, int rank)
