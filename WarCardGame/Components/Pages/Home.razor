@@ -1,96 +1,86 @@
 ﻿@page "/"
 @using WarCardGame.models
+@using WarCardGame.services
 
 <PageTitle>Home</PageTitle>
 
-<input type="number" @bind="InputPlayers" placeholder="Enter a integer less than 53 but more than 1" style="width:500px; height: 20px;" min="2" max="52" />
+<input type="number" @bind="InputPlayers" placeholder="Enter a integer less than 53 but more than 1" style="width:500px; height: 20px;" min="2" max="52"/>
 <button @onclick="SubmitInput" disabled="@(!IsValidInput)">Submit</button>
 
 @if (!IsValidInput && !string.IsNullOrEmpty(InputPlayers))
 {
     <p style="color:red;">Please enter a valid integer less than 53 and more than 1.</p>
-    
 }
 <button @onclick="TestButton">test button method</button>
 
 <br/>
 
-@if (_playerHands.HandQueue.Count > 0)
+
+@if (_gameRound._PlayedCards.PlayedHand.Count > 0)
+{
+    <h3> Played Cards:</h3>
+    <ul>
+        @foreach (KeyValuePair<string, Card> player in _gameRound._PlayedCards.PlayedHand)
+        {
+            <li> @player.Key: @player.Value.Suit | @player.Value.Rank </li>
+        }
+    </ul>
+}
+else if (_gameRound._PlayerHands.HandQueue.Count > 0)
 {
     <h3> Players:</h3>
     <ul>
-        @foreach (var playerName in _playerHands.HandQueue)
+        @foreach (KeyValuePair<string, Hand> player in _gameRound._PlayerHands.HandQueue)
         {
-            <li> @playerName.Key: @playerName.Value.Cards.Count </li>
+            <li> @player.Key: @player.Value.Cards.Count </li>
         }
     </ul>
 }
 
+
 <br/>
 
 <button @onclick="BeginRound"> AHHHHHHH</button>
-
-
+<br/>
+<button @onclick="DetermineWinner"> Determine Winner</button>
 
 @code {
+
     private string InputPlayers;
-    private bool IsValidInput => int.TryParse(InputPlayers, out int number) && number >= 2 && number < 53;
-    private Deck _deck = new Deck();
-    private PlayerHands _playerHands = new PlayerHands();
-    private Players _players = new Players();
-    private PlayedCards _playedCards = new PlayedCards();
-    
-    // FOR TESTING
-    public int testCount = 0;
-    // DELETE ABOVE WHEN FINISHED
-    
     public int PlayerCount;
+    private bool IsValidInput => int.TryParse(InputPlayers, out int number) && number >= 2 && number < 53;
+    private readonly GameRound _gameRound = new();
+    public Card winner;
+
+    // FOR TESTING
+    public int testCount;
+    // DELETE ABOVE WHEN FINISHED
 
     private void SubmitInput()
     {
         if (IsValidInput)
         {
             PlayerCount = int.Parse(InputPlayers);
-            CreateHands(PlayerCount);
-        }
-    }
-
-    private void CreateHands(int PlayerCount)
-    {
-        // Clear previous hands
-        _playerHands.HandQueue.Clear();
-    
-        for (int i = 0; i < PlayerCount; i++)
-        {
-            string playerName = _players.PlayerNames[i + 1];
-            _playerHands.AddPlayer(playerName);
-        
-            // Each player gets their cards directly here
-            _deck.AddToHand(_playerHands.HandQueue[playerName], PlayerCount);
+            _gameRound.CreateHands(PlayerCount);
         }
     }
 
     private void TestButton()
     {
-        testCount = _playerHands.HandQueue.Count;
+        testCount = _gameRound._PlayerHands.HandQueue.Count;
         Console.WriteLine(testCount);
     }
 
     private void BeginRound()
     {
-        for (int i = 0; i < PlayerCount; i++)
-        {
-            string playerName = _players.PlayerNames[i + 1];
-            Card cardPulled = _playerHands.HandQueue[playerName].Cards.Dequeue();
-            
-            _playedCards.AddToPlayedHand(playerName, cardPulled);
-            Console.WriteLine($"Name: {playerName} Card: {cardPulled.Suit} Rank: {cardPulled.Rank} ");
-        }
+        _gameRound.DrawCards(PlayerCount);
+        StateHasChanged();
+    }
 
-        Card winner = _playedCards.DetermineWinner();
+    private void DetermineWinner()
+    {
+        Card winner  = _gameRound.DetermineWinner();
         
-        Console.WriteLine($"Suit: {winner.Suit} | Rank: {winner.Rank}");
-        
-        _playedCards.ClearPlay();
+        Console.WriteLine($"{winner.Suit} | {winner.Rank}");
     }
 }

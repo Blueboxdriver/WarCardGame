@@ -8,16 +8,4 @@ public class PlayerHands
     {
         HandQueue[playerName] = new Hand();
     }
-    
-    public Hand GetHand(string playerName)
-    {
-        if (HandQueue.TryGetValue(playerName, out var hand))
-        {
-            return hand;
-        }
-
-        throw new KeyNotFoundException($"Player {playerName} not found."); // Handle the case if the player does not exist
-    }
-
-
 }

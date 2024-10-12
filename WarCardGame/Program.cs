@@ -1,4 +1,5 @@
 using WarCardGame.Components;
+using WarCardGame.services;
 
 namespace WarCardGame;
 
@@ -11,6 +12,8 @@ public class Program
         // Add services to the container.
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
+        
+        builder.Services.AddSingleton<IGameRound, GameRound>();
 
         var app = builder.Build();
 
