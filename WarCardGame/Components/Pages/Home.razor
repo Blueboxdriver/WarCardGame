@@ -4,9 +4,8 @@
 
 <PageTitle>Home</PageTitle>
 
-Please select the amount of players: 
+Please select the amount of players:
 <select @bind="_playerSelection">
-    <option value="1">One</option>
     <option value="2">Two</option>
     <option value="3">Three</option>
     <option value="4">Four</option>
@@ -14,25 +13,41 @@ Please select the amount of players:
 
 <button @onclick="StartGame" disabled="@_gameInProgress">Start Game</button>
 <br/> <br/>
-<button @onclick="StartRound"> Draw Cards </button>
-<br/> <br/>
-<button @onclick="FindWinner"> Compare Cards </button>
-<br/> <br/>
 
-@if (_game._PlayedCards.PlayedHand.Count == 0)
+@if (_gameInProgress)
 {
-    foreach (var thing in _game._PlayerHands.HandQueue)
+    <button @onclick="StartRound"> Draw Cards </button>
+    <br/>
+    <br/>
+    <button @onclick="FindWinner"> Compare Cards </button>
+    <br/>
+    <br/>
+    <button @onclick="async () => await AutomaticPlay()"> Play Automatically? </button>
+
+    if (_game._PlayedCards.PlayedHand.Count == 0)
     {
-        <p>@thing.Key | @thing.Value.Cards.Count </p>
-    
+        foreach (KeyValuePair<string, Hand> thing in _game._PlayerHands.HandQueue)
+        {
+            <p>@thing.Key | @thing.Value.Cards.Count </p>
+        }
+    }
+    else if (_game._PlayedCards.PlayedHand.Count > 0)
+    {
+        foreach (KeyValuePair<string, Card> thing in _game._PlayedCards.PlayedHand)
+        {
+            <p>@thing.Key | @thing.Value.Suit | @thing.Value.Rank</p>
+        }
     }
 }
-else if (_game._PlayedCards.PlayedHand.Count > 0) 
+else if (!_gameInProgress)
 {
-    foreach (var thing in _game._PlayedCards.PlayedHand)
+    foreach (string winner in _game.ListOfActivePlayers)
     {
-        <p>@thing.Key | @thing.Value.Suit | @thing.Value.Rank</p>
+        <h1> WINNER: @winner</h1>
     }
+
+    <br/>
+    <button @onclick="RefillDeck">Refill Deck?</button>
 }
 
 
@@ -41,16 +56,15 @@ else if (_game._PlayedCards.PlayedHand.Count > 0)
 </div>
 
 
-
 @code {
-    private GameRound _game = new GameRound();
+    private readonly GameRound _game = new();
     private int _playerCount;
     private string _playerSelection = "1";
     private string _playerName = "";
-    private bool _gameInProgress = false;
-    private Players _dictionaryOfPlayers = new Players();
-    
-    
+    private bool _gameInProgress;
+    private readonly Players _dictionaryOfPlayers = new();
+
+
     private void StartGame()
     {
         _gameInProgress = true;
@@ -67,8 +81,8 @@ else if (_game._PlayedCards.PlayedHand.Count > 0)
 
     private void StartRound()
     {
-        foreach (var name in _game.ListOfActivePlayers)
-        { ;
+        foreach (string name in _game.ListOfActivePlayers)
+        {
             _game.RoundStart(name);
         }
     }
@@ -77,5 +91,41 @@ else if (_game._PlayedCards.PlayedHand.Count > 0)
     {
         _game.FindWinner();
         _game._PlayedCards.ClearPlay();
+        _game.FindGameWinner(); // Check if the game has been won
+
+        if (_game.GameWon)
+        {
+            _gameInProgress = false; // Stop the game if won
+        }
     }
+
+    private async Task AutomaticPlay()
+    {
+        while (_gameInProgress)
+        {
+            await Task.Delay(1); // Non-blocking delay
+            StartRound();
+            StateHasChanged(); // Manually trigger a UI refresh
+            await Task.Delay(1); // Non-blocking delay
+            FindWinner();
+            StateHasChanged(); // Manually trigger a UI refresh
+        }
+    }
+
+    private void RefillDeck()
+    {
+        _game._Deck.RebuildDeck();
+
+        foreach (KeyValuePair<string, Hand> player in _game._PlayerHands.HandQueue)
+        {
+            player.Value.Cards.Clear(); // Clear the Cards queue for each player
+        }
+
+        // Reset game data
+        _game.GameCount = 0;
+        _game.GameWon = false;
+        _game.ListOfActivePlayers.Clear();
+        _gameInProgress = false;
+    }
+
 }
