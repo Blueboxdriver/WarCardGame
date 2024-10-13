@@ -4,83 +4,78 @@
 
 <PageTitle>Home</PageTitle>
 
-<input type="number" @bind="InputPlayers" placeholder="Enter a integer less than 53 but more than 1" style="width:500px; height: 20px;" min="2" max="52"/>
-<button @onclick="SubmitInput" disabled="@(!IsValidInput)">Submit</button>
+Please select the amount of players: 
+<select @bind="_playerSelection">
+    <option value="1">One</option>
+    <option value="2">Two</option>
+    <option value="3">Three</option>
+    <option value="4">Four</option>
+</select>
 
-@if (!IsValidInput && !string.IsNullOrEmpty(InputPlayers))
+<button @onclick="StartGame" disabled="@_gameInProgress">Start Game</button>
+<br/> <br/>
+<button @onclick="StartRound"> Draw Cards </button>
+<br/> <br/>
+<button @onclick="FindWinner"> Compare Cards </button>
+<br/> <br/>
+
+@if (_game._PlayedCards.PlayedHand.Count == 0)
 {
-    <p style="color:red;">Please enter a valid integer less than 53 and more than 1.</p>
+    foreach (var thing in _game._PlayerHands.HandQueue)
+    {
+        <p>@thing.Key | @thing.Value.Cards.Count </p>
+    
+    }
 }
-<button @onclick="TestButton">test button method</button>
-
-<br/>
-
-
-@if (_gameRound._PlayedCards.PlayedHand.Count > 0)
+else if (_game._PlayedCards.PlayedHand.Count > 0) 
 {
-    <h3> Played Cards:</h3>
-    <ul>
-        @foreach (KeyValuePair<string, Card> player in _gameRound._PlayedCards.PlayedHand)
-        {
-            <li> @player.Key: @player.Value.Suit | @player.Value.Rank </li>
-        }
-    </ul>
-}
-else if (_gameRound._PlayerHands.HandQueue.Count > 0)
-{
-    <h3> Players:</h3>
-    <ul>
-        @foreach (KeyValuePair<string, Hand> player in _gameRound._PlayerHands.HandQueue)
-        {
-            <li> @player.Key: @player.Value.Cards.Count </li>
-        }
-    </ul>
+    foreach (var thing in _game._PlayedCards.PlayedHand)
+    {
+        <p>@thing.Key | @thing.Value.Suit | @thing.Value.Rank</p>
+    }
 }
 
 
-<br/>
+<div style="float:right;">
+    <p>Cards in Deck (Pot): @_game._Deck.Cards.Count</p>
+</div>
 
-<button @onclick="BeginRound"> AHHHHHHH</button>
-<br/>
-<button @onclick="DetermineWinner"> Determine Winner</button>
+
 
 @code {
-
-    private string InputPlayers;
-    public int PlayerCount;
-    private bool IsValidInput => int.TryParse(InputPlayers, out int number) && number >= 2 && number < 53;
-    private readonly GameRound _gameRound = new();
-    public Card winner;
-
-    // FOR TESTING
-    public int testCount;
-    // DELETE ABOVE WHEN FINISHED
-
-    private void SubmitInput()
+    private GameRound _game = new GameRound();
+    private int _playerCount;
+    private string _playerSelection = "1";
+    private string _playerName = "";
+    private bool _gameInProgress = false;
+    private Players _dictionaryOfPlayers = new Players();
+    
+    
+    private void StartGame()
     {
-        if (IsValidInput)
+        _gameInProgress = true;
+        int.TryParse(_playerSelection, out _playerCount);
+        _game.PlayerCount = _playerCount;
+
+        for (int i = 0; i < _game.PlayerCount; i++)
         {
-            PlayerCount = int.Parse(InputPlayers);
-            _gameRound.CreateHands(PlayerCount);
+            _playerName = _dictionaryOfPlayers.PlayerNames[i];
+            _game.ListOfActivePlayers.Add(_playerName);
+            _game.StartGame(_playerName, _game.PlayerCount);
         }
     }
 
-    private void TestButton()
+    private void StartRound()
     {
-        testCount = _gameRound._PlayerHands.HandQueue.Count;
-        Console.WriteLine(testCount);
+        foreach (var name in _game.ListOfActivePlayers)
+        { ;
+            _game.RoundStart(name);
+        }
     }
 
-    private void BeginRound()
+    private void FindWinner()
     {
-        _gameRound.DrawCards(PlayerCount);
-        StateHasChanged();
-    }
-
-    private void DetermineWinner()
-    {
-        Card winner  = _gameRound.DetermineWinner();
-        
-        Console.WriteLine($"{winner.Suit} | {winner.Rank}");
+        _game.FindWinner();
+        _game._PlayedCards.ClearPlay();
     }
 }

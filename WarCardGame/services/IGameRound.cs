@@ -9,10 +9,13 @@ public interface IGameRound
     public PlayerHands _PlayerHands { get; set; }
     public Players _Players { get; set; }
     public int PlayerCount { get; set; }
-    public void DrawCards(int input);
+    public void DrawCards(string playerName);
 
-    public Card DetermineWinner();
+    public void StartGame(string playerName, int playerCount);
 
-    public void CreateHands(int PlayerCount);
+    public void RoundStart(string playerName);
 
+    public void FindWinner();
+
+    public void EndRound(Hand winningHand);
 }
