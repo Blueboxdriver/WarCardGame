@@ -13,10 +13,10 @@ public class GameRound : IGameRound
     public List<string> ListOfActivePlayers { get; set; } = new();
     public bool GameWon { get; set; }
     public int GameCount { get; set; }
+    public bool CannotContinue { get; set; }
 
     public void DrawCards(string playerName)
     {
-        // Check if the player's hand is not empty
         if (_PlayerHands.HandQueue[playerName].Cards.Count != 0)
         {
             Card drawnCard = _PlayerHands.HandQueue[playerName].Cards.Dequeue();
@@ -25,7 +25,7 @@ public class GameRound : IGameRound
         }
         else
         {
-            Console.WriteLine($"{playerName} has no cards left to draw.");
+            CannotContinue = true;
             CheckIfLost();
             FindGameWinner();
         }
@@ -42,12 +42,10 @@ public class GameRound : IGameRound
     public void RoundStart(string playerName)
     {
         DrawCards(playerName);
-        if (GameCount % 5 == 0)
+        if (GameCount % 52 == 0)
         {
-            foreach (var player in ListOfActivePlayers)
-            {
-                _PlayerHands.ShuffleHand(_PlayerHands.HandQueue[player]);
-            }
+            foreach (string player in ListOfActivePlayers) _PlayerHands.ShuffleHand(_PlayerHands.HandQueue[player]);
+            Console.WriteLine("Cards shuffled");
         }
 
         GameCount++;
@@ -55,142 +53,139 @@ public class GameRound : IGameRound
 
     public void FindWinner()
     {
-        List<Card> cardsInPot = new();
-        bool test = false;
-        
-        
-        foreach (KeyValuePair<string, Card> thing in _PlayedCards.PlayedHand) cardsInPot.Add(thing.Value);
-        
-        if (cardsInPot.Count < 2)
-        {
-            Console.WriteLine("Not enough cards for comparison.");
-            CheckIfLost();
-            FindGameWinner();
-            return;
-        }
-        
-        cardsInPot.Sort((card1, card2) => card2.Rank.CompareTo(card1.Rank));
-        
-        Console.WriteLine($"{cardsInPot[0].Rank} and {cardsInPot[1].Rank}");
+        List<Card> cardsInPlay = new List<Card>();
 
-        if (cardsInPot[0].Rank == cardsInPot[1].Rank)
+        foreach (string playerName in ListOfActivePlayers)
         {
-            Console.WriteLine($"Tie Breaker: {cardsInPot[0].Rank} == {cardsInPot[1].Rank}");
-            
+            cardsInPlay.Add(_PlayedCards.PlayedHand[playerName]);
+        }
+        Console.WriteLine("Cards in play compiled");
+        
+        cardsInPlay = cardsInPlay.OrderByDescending(card => card.Rank).ToList();
+        Console.WriteLine("Cards in play sorted");
+
+        if (cardsInPlay[0].Rank == cardsInPlay[1].Rank)
+        {
+            Console.WriteLine("Tie.");
             _PlayedCards.ClearPlay();
-            foreach (var player in ListOfActivePlayers)
-            {
-                if (_PlayerHands.HandQueue[player].Cards.Count != 0)
-                {
-                    CheckIfLost();
-                    FindGameWinner();
-                }
-                break;
-            }
             TieBreaker();
         }
-        else if (cardsInPot[0].Rank != cardsInPot[1].Rank)
+        else if (cardsInPlay[0].Rank != cardsInPlay[1].Rank)
         {
-            string winningPlayer = null;
-            foreach (KeyValuePair<string, Card> thing in _PlayedCards.PlayedHand)
-                if (thing.Value == cardsInPot[0])
+            Console.WriteLine("Winner.");
+
+            string winnerName = "";
+
+            foreach (var playedHand in _PlayedCards.PlayedHand)
+            {
+                if (playedHand.Value == cardsInPlay[0])
                 {
-                    winningPlayer = thing.Key;
-                    break;
+                    winnerName = playedHand.Key;
                 }
-            FindGameWinner();
-            EndRound(_PlayerHands.HandQueue[winningPlayer]);
+            }
+            EndRound(_PlayerHands.HandQueue[winnerName]);
         }
     }
+
 
     public void TieBreaker()
     {
-        List<Card> cardsInPot = new();
-        List<string> playersToDraw = new(ListOfActivePlayers);
-
-        if (playersToDraw.All(player => _PlayerHands.HandQueue[player].Cards.Count > 0))
+        List<Card> cardsInPlay = new List<Card>();
+        List<string> tempList = ListOfActivePlayers.ToList();
+        bool allCannotContinue = true;
+        string winnerName = "";
+        
+        foreach (string playerName in tempList)
         {
-            foreach (var player in playersToDraw)
+            DrawCards(playerName);
+            if (CannotContinue)
             {
-                DrawCards(player);
+                Console.WriteLine($"{playerName} has no cards left to draw.");
+                CheckIfLost();
+            }
+            else if (!CannotContinue)
+            {
+                Console.WriteLine($"{playerName} has {_PlayedCards.PlayedHand.Count} played cards.");
+                cardsInPlay.Add(_PlayedCards.PlayedHand[playerName]);
+                allCannotContinue = false;
             }
         }
-        else
+
+        if (allCannotContinue)
         {
-            Console.WriteLine("A player has no more cards for a tie-breaker.");
-            CheckIfLost();
-            FindGameWinner();
+            Console.WriteLine("No player has cards left.");
             return;
         }
 
-        foreach (KeyValuePair<string, Card> thing in _PlayedCards.PlayedHand)
+        if (cardsInPlay.Count < 2)
         {
-            cardsInPot.Add(thing.Value);
-        }
-
-        if (cardsInPot.Count < 2)
-        {
-            Console.WriteLine("Not enough cards for comparison.");
-            CheckIfLost();
-            FindGameWinner();
-            return;
-        }
-        
-        cardsInPot.Sort((card1, card2) => card2.Rank.CompareTo(card1.Rank));
-
-        if (cardsInPot[0].Rank == cardsInPot[1].Rank)
-        {
-            Console.WriteLine($"Recursive Tie Breaker: {cardsInPot[0].Rank} == {cardsInPot[1].Rank}");
-            _PlayedCards.ClearPlay();
-            TieBreaker(); 
-        }
-        else
-        {
-            string winningPlayer = null;
-            foreach (KeyValuePair<string, Card> thing in _PlayedCards.PlayedHand)
+            Console.WriteLine("Less than two cards are in the cards in play list");
+            foreach (var playedHand in _PlayedCards.PlayedHand)
             {
-                if (thing.Value == cardsInPot[0])
+                if (playedHand.Value == cardsInPlay[0])
                 {
-                    winningPlayer = thing.Key;
-                    break;
+                    winnerName = playedHand.Key;
                 }
             }
-            EndRound(_PlayerHands.HandQueue[winningPlayer]);
+            EndRound(_PlayerHands.HandQueue[winnerName]);
+        }
+        
+        Console.WriteLine("Cards in play compiled at tiebreaker");
+        
+        cardsInPlay = cardsInPlay.OrderByDescending(card => card.Rank).ToList();
+        Console.WriteLine("Cards in play sorted in tie breaker");
+
+        if (cardsInPlay[0].Rank == cardsInPlay[1].Rank)
+        {
+            Console.WriteLine("Recursive Tie.");
+            _PlayedCards.ClearPlay();
+            TieBreaker();
+        }
+        else if (cardsInPlay[0].Rank != cardsInPlay[1].Rank)
+        {
+            Console.WriteLine("Tie Winner");
+
+            winnerName = "";
+
+            foreach (var playedHand in _PlayedCards.PlayedHand)
+            {
+                if (playedHand.Value == cardsInPlay[0])
+                {
+                    winnerName = playedHand.Key;
+                }
+            }
+            EndRound(_PlayerHands.HandQueue[winnerName]);
         }
     }
-
 
 
     public void EndRound(Hand winningHand)
     {
+        // Move all cards from the deck to the winning hand
         while (_Deck.Cards.Count > 0)
         {
             Card cardToMove = _Deck.Cards.Pop();
-
             winningHand.Cards.Enqueue(cardToMove);
         }
         CheckIfLost();
-        FindGameWinner();
     }
+
 
     public void CheckIfLost()
     {
-        List<string> playersToRemove = new();
-        
-        foreach (var player in _PlayerHands.HandQueue)
+        List<string> playerToRemove = new List<string>();
+        foreach (string playerName in ListOfActivePlayers)
         {
-            if (player.Value.Cards.Count == 0)
+            if (_PlayerHands.HandQueue[playerName].Cards.Count == 0)
             {
-                Console.WriteLine($"{player.Key} has lost the game.");
-                playersToRemove.Add(player.Key);
+                playerToRemove.Add(playerName);
+                Console.WriteLine($"{playerName} Removed");
             }
         }
-        
-        foreach (var playerName in playersToRemove)
+
+        foreach (string playerName in playerToRemove)
         {
-            _PlayerHands.HandQueue.Remove(playerName);
-            ListOfActivePlayers.Remove(playerName); 
-            PlayerCount--; 
+            ListOfActivePlayers.Remove(playerName);
         }
         FindGameWinner();
     }
@@ -198,13 +193,9 @@ public class GameRound : IGameRound
 
     public void FindGameWinner()
     {
-        foreach (var thing in ListOfActivePlayers)
+        if (ListOfActivePlayers.Count == 1)
         {
-            if (_PlayerHands.HandQueue[thing].Cards.Count == 52)
-            {
-                GameWon = true;
-            }
+            GameWon = true;
         }
     }
-
 }

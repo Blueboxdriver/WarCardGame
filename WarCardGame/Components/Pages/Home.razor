@@ -22,22 +22,20 @@ Please select the amount of players:
     <button @onclick="FindWinner"> Compare Cards </button>
     <br/>
     <br/>
-    <button @onclick="async () => await AutomaticPlay()"> Play Automatically? </button>
+    <button @onclick="Automatic"> Automatic </button>
+    
+    foreach (string playerName in _game.ListOfActivePlayers)
+    {
+        if (_game._PlayedCards.PlayedHand.Count == 0)
+        {
+            <p>@playerName | Deck Size: @_game._PlayerHands.HandQueue[playerName].Cards.Count</p>
+        }
+        else if (_game._PlayedCards.PlayedHand.Count > 0)
+        {
+            <p>@playerName | @_game._PlayedCards.PlayedHand[playerName].Suit | @_game._PlayedCards.PlayedHand[playerName].Rank </p>
+        }
+    }
 
-    if (_game._PlayedCards.PlayedHand.Count == 0)
-    {
-        foreach (KeyValuePair<string, Hand> thing in _game._PlayerHands.HandQueue)
-        {
-            <p>@thing.Key | @thing.Value.Cards.Count </p>
-        }
-    }
-    else if (_game._PlayedCards.PlayedHand.Count > 0)
-    {
-        foreach (KeyValuePair<string, Card> thing in _game._PlayedCards.PlayedHand)
-        {
-            <p>@thing.Key | @thing.Value.Suit | @thing.Value.Rank</p>
-        }
-    }
 }
 else if (!_gameInProgress)
 {
@@ -53,6 +51,11 @@ else if (!_gameInProgress)
 
 <div style="float:right;">
     <p>Cards in Deck (Pot): @_game._Deck.Cards.Count</p>
+    <br/>
+    <button @onclick="TurnOffAutomatic"> Turn off Automatic mode. </button>
+    <p> Automatic mode toggled: @IsAutomatic</p>
+    <br/>
+    <p>@GameCounter</p>
 </div>
 
 
@@ -63,19 +66,24 @@ else if (!_gameInProgress)
     private string _playerName = "";
     private bool _gameInProgress;
     private readonly Players _dictionaryOfPlayers = new();
+    private int GameCounter;
+    private bool IsAutomatic;
+
 
 
     private void StartGame()
     {
         _gameInProgress = true;
         int.TryParse(_playerSelection, out _playerCount);
-        _game.PlayerCount = _playerCount;
 
-        for (int i = 0; i < _game.PlayerCount; i++)
+        for (int i = 0; i < _playerCount; i++)
         {
-            _playerName = _dictionaryOfPlayers.PlayerNames[i];
-            _game.ListOfActivePlayers.Add(_playerName);
-            _game.StartGame(_playerName, _game.PlayerCount);
+            _game.ListOfActivePlayers.Add(_dictionaryOfPlayers.PlayerNames[i]);
+        }
+
+        foreach (string playerName in _game.ListOfActivePlayers)
+        {
+            _game.StartGame(playerName, _playerCount);
         }
     }
 
@@ -99,17 +107,44 @@ else if (!_gameInProgress)
         }
     }
 
-    private async Task AutomaticPlay()
+    private async Task Automatic()
     {
-        while (_gameInProgress)
+        if (IsAutomatic)
         {
-            await Task.Delay(1); // Non-blocking delay
-            StartRound();
-            StateHasChanged(); // Manually trigger a UI refresh
-            await Task.Delay(1); // Non-blocking delay
-            FindWinner();
-            StateHasChanged(); // Manually trigger a UI refresh
+            while (_gameInProgress)
+            {
+                await Task.Delay(1);
+                StartRound();
+                StateHasChanged();
+                await Task.Delay(1);
+                StateHasChanged();
+                FindWinner();
+                StateHasChanged();
+            }
+
+            await Task.Delay(1000);
+            RefillDeck();
+            await Task.Delay(300);
+            StartGame();
+            await Task.Delay(1000);
+            GameCounter++;
+            Automatic();
         }
+    }
+
+    public void TurnOffAutomatic()
+    {
+        if (IsAutomatic)
+        {
+            IsAutomatic = false;
+        }
+
+        if (!IsAutomatic)
+        {
+            IsAutomatic = true;
+
+        }
+        StateHasChanged();
     }
 
     private void RefillDeck()
