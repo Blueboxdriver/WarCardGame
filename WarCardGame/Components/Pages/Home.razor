@@ -12,10 +12,10 @@ Please select the amount of players:
     <option value="4">Four</option>
 </select>
 
-<button @onclick="StartGame" disabled="@_gameInProgress">Start Game</button>
+<button @onclick="StartGame" disabled="@_gameInProgress">Start Game</button> <!-- Initializes the game -->
 <br/><br/>
 
-@if (_gameInProgress)
+@if (_gameInProgress) // If the game is in progress, we reveal the buttons that allow the player to play the game.
 {
     <button @onclick="StartRound" disabled="@_cardsDrawn">Draw Cards</button>
     <br/>
@@ -28,18 +28,29 @@ Please select the amount of players:
     <br/>
     <button @onclick="Automatic">Automatic</button>
 
-    @foreach (string playerName in _game.ListOfActivePlayers)
+    @foreach (string playerName in _game.ListOfActivePlayers) // We display the amount of cards a player has at all times.
     {
-        Card? playedCard = _game._PlayedCards.PlayedHand.ContainsKey(playerName) ? _game._PlayedCards.PlayedHand[playerName] : null;
-        <p>@playerName | Deck Size: @_game._PlayerHands.HandQueue[playerName].Cards.Count @(playedCard != null ? $"| {playedCard.Suit} | {playedCard.Rank}" : "")</p>
+        Card? playedCard = null;
+        if (_game._PlayedCards.PlayedHand.ContainsKey(playerName))
+        {
+            playedCard = _game._PlayedCards.PlayedHand[playerName];
+        }
+
+        string playedCardInfo = "";
+        if (playedCard != null) // We create a string that makes it easier to print out a played card's suit and value.
+        {
+            playedCardInfo = $"| {playedCard.Suit} | {playedCard.Rank}"; // Furthermore, assuming there are played cards, we display their suit and value.
+        }
+
+        <p>@playerName | Deck Size: @_game._PlayerHands.HandQueue[playerName].Cards.Count @playedCardInfo</p>
     }
 
-    if (_game.IsTied)
+    if (_game.IsTied) // If the game is tied, we print this out to the screen.
     {
         <p style="text-align: center">Game is tied, comparing cards will run rematch.</p>
     }
 }
-else
+else // If the game is not in progress, then we display our winner and offer the player a chance to play again.
 {
     foreach (string winner in _game.ListOfActivePlayers)
     {
@@ -47,32 +58,37 @@ else
     }
 
     <br/>
-    <button @onclick="RefillDeck">Refill Deck?</button>
+    <button @onclick="RefillDeck">Refill Deck and play again?</button> // This won't automatically start a new game, it only refills the deck.
 }
 
 <div style="float:right;">
+    <!-- This div displays relevant game data to the right of the screen -->
     <p>Cards in Deck (Pot): @_game._Deck.Cards.Count</p>
     <br/>
     <button @onclick="TurnOffAutomatic">Toggle Automatic mode.</button>
-    <p>Automatic mode toggled: @_isAutomatic</p>
+    <p>Automatic mode toggled: @_isAutomatic</p> <!-- Toggles automatic mode -->
     <br/>
     <p>@_gameCounter</p>
 </div>
 
 @code {
-    private readonly GameRound _game = new();
-    private int _playerCount;
-    private string _playerSelection = "1";
-    private bool _gameInProgress;
-    private readonly Players _dictionaryOfPlayers = new();
-    private int _gameCounter;
-    private bool _isAutomatic;
-    private string _winnerName = "";
-    private bool _cardsDrawn;
-    private bool _cardsCompared;
-    private bool _winnerDeclared;
-    private CancellationTokenSource _cancellationTokenSource;
+    private readonly GameRound _game = new(); // Initializes our service, allowing us to interface with the game.
+    private int _playerCount; // The amount of players starting off in the game.
+    private string _playerSelection = "2"; // The default selection of players.
+    private bool _gameInProgress; // A boolean reflecting whether the game is in progress or not.
+    private readonly Players _dictionaryOfPlayers = new(); // Creates a Players object so we can get our list of player names.
+    private int _gameCounter; // Unlike the Service, this game counter simply counts the amount of games that has been played.
+    private bool _isAutomatic; // A boolean that reflects the status of automatic mode.
+    private string _winnerName = ""; // A string that stores the string reflecting the winner's name from the service's findWinner method.
+    private bool _cardsDrawn; // A boolean reflecting what stage of the round the player is in and limits button functionality depending on its state.
+    private bool _cardsCompared; // A boolean reflecting what stage of the round the player is in and limits button functionality depending on its state.
+    private bool _winnerDeclared; // A boolean reflecting what stage of the round the player is in and limits button functionality depending on its state.
+    private CancellationTokenSource _cancellationTokenSource; // A cancellation token used to stop automatic mode when the toggle button is pressed.
 
+    /// <summary>
+    ///     Starts the game by collecting the playercounter, creating the list of players, and calling on the service to start
+    ///     the game with the provided information.
+    /// </summary>
     private void StartGame()
     {
         _gameInProgress = true;
@@ -87,6 +103,9 @@ else
         }
     }
 
+    /// <summary>
+    ///     Starts a round by calling on the service to start a new round.
+    /// </summary>
     private void StartRound()
     {
         foreach (string name in _game.ListOfActivePlayers)
@@ -98,6 +117,9 @@ else
         _cardsCompared = false;
     }
 
+    /// <summary>
+    ///     Compares the drawn cards by calling on the Server to determine a winner with the <see cref="FindWinner" /> method.
+    /// </summary>
     private void FindWinner()
     {
         _winnerName = _game.FindWinner();
@@ -113,9 +135,12 @@ else
         _winnerDeclared = false;
     }
 
+    /// <summary>
+    ///     Calls on the service to determine the winner of a round
+    /// </summary>
     private void DeclareWinner()
     {
-        if (_game._PlayerHands.HandQueue.TryGetValue(_winnerName, out Hand winnerHand))
+        if (_game._PlayerHands.HandQueue.TryGetValue(_winnerName, out Hand winnerHand)) // This verifies we're getting an actual Hand object.
         {
             _game.EndRound(winnerHand);
             _game.FindGameWinner();
@@ -124,41 +149,48 @@ else
         }
     }
 
+    /// <summary>
+    ///     Asynchronously process the game at extremely high speeds to provide a timely testing environment.
+    /// </summary>
     private async Task Automatic()
     {
         _cancellationTokenSource = new CancellationTokenSource();
         CancellationToken token = _cancellationTokenSource.Token;
-
+        // I heavily advise not touching the values of the delay Task. The automatic method itself isn't entirely stable
+        // and you may experience errors that wouldn't happen if you played normally. 
+        // In short, if you change the values only for it to break, it isn't my fault.
         while (_gameInProgress && _isAutomatic)
         {
-            await Task.Delay(5, token);
+            await Task.Delay(50, token);
             StartRound();
-            StateHasChanged(); 
-            await Task.Delay(5, token);
+            StateHasChanged();
+            await Task.Delay(50, token);
 
             FindWinner();
-            StateHasChanged(); 
-            await Task.Delay(5, token);
-        
+            StateHasChanged();
+            await Task.Delay(50, token);
+
             DeclareWinner();
-            StateHasChanged(); 
-            await Task.Delay(5, token);
+            StateHasChanged();
+            await Task.Delay(50, token);
 
             if (_game.GameWon)
             {
                 await Task.Delay(1000);
-                RefillDeck(); 
-                await Task.Delay(300); 
-                StartGame(); 
-                await Task.Delay(1000); 
-                _gameCounter++; 
-                await Automatic(); 
-                break; 
+                RefillDeck();
+                await Task.Delay(300);
+                StartGame();
+                await Task.Delay(1000);
+                _gameCounter++;
+                await Automatic();
+                break;
             }
         }
     }
 
-
+    /// <summary>
+    ///     Handles turning off automatic mode.
+    /// </summary>
     private void TurnOffAutomatic()
     {
         _isAutomatic = !_isAutomatic;
@@ -170,6 +202,9 @@ else
         StateHasChanged();
     }
 
+    /// <summary>
+    ///     Refills the deck with 52 cards, essentially resetting the game when it's complete.
+    /// </summary>
     private void RefillDeck()
     {
         _game._Deck.RebuildDeck();
@@ -179,7 +214,7 @@ else
             player.Cards.Clear(); // Clear the Cards queue for each player
         }
 
-// Reset game data
+        // Reset game data
         _game.GameCount = 0;
         _game.GameWon = false;
         _game.ListOfActivePlayers.Clear();
