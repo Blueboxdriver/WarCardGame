@@ -4,6 +4,7 @@
 
 <PageTitle>Home</PageTitle>
 
+<!-- Player selection dropdown -->
 Please select the amount of players:
 <select @bind="_playerSelection">
     <option value="2">Two</option>
@@ -12,78 +13,73 @@ Please select the amount of players:
 </select>
 
 <button @onclick="StartGame" disabled="@_gameInProgress">Start Game</button>
-<br/> <br/>
+<br/><br/>
 
 @if (_gameInProgress)
 {
-    <button @onclick="StartRound"> Draw Cards </button>
+    <button @onclick="StartRound" disabled="@_cardsDrawn">Draw Cards</button>
     <br/>
     <br/>
-    <button @onclick="FindWinner"> Compare Cards </button>
+    <button @onclick="FindWinner" disabled="@_cardsCompared">Compare Cards</button>
     <br/>
     <br/>
-    <button @onclick="DeclareWinner"> Compare Cards </button>
+    <button @onclick="DeclareWinner" disabled="@_winnerDeclared">Declare Winner</button>
     <br/>
     <br/>
-    <button @onclick="Automatic"> Automatic </button>
-    
-    foreach (string playerName in _game.ListOfActivePlayers)
+    <button @onclick="Automatic">Automatic</button>
+
+    @foreach (string playerName in _game.ListOfActivePlayers)
     {
-        if (_game._PlayedCards.PlayedHand.Count == 0)
-        {
-            <p>@playerName | Deck Size: @_game._PlayerHands.HandQueue[playerName].Cards.Count</p>
-        }
-        else if (_game._PlayedCards.PlayedHand.Count > 0)
-        {
-            <p>@playerName | @_game._PlayedCards.PlayedHand[playerName].Suit | @_game._PlayedCards.PlayedHand[playerName].Rank </p>
-        }
+        Card? playedCard = _game._PlayedCards.PlayedHand.ContainsKey(playerName) ? _game._PlayedCards.PlayedHand[playerName] : null;
+        <p>@playerName | Deck Size: @_game._PlayerHands.HandQueue[playerName].Cards.Count @(playedCard != null ? $"| {playedCard.Suit} | {playedCard.Rank}" : "")</p>
     }
 
+    if (_game.IsTied)
+    {
+        <p style="text-align: center">Game is tied, comparing cards will run rematch.</p>
+    }
 }
-else if (!_gameInProgress)
+else
 {
     foreach (string winner in _game.ListOfActivePlayers)
     {
-        <h1> WINNER: @winner</h1>
+        <h1>WINNER: @winner</h1>
     }
 
     <br/>
     <button @onclick="RefillDeck">Refill Deck?</button>
 }
 
-
 <div style="float:right;">
     <p>Cards in Deck (Pot): @_game._Deck.Cards.Count</p>
     <br/>
-    <button @onclick="TurnOffAutomatic"> Turn off Automatic mode. </button>
-    <p> Automatic mode toggled: @IsAutomatic</p>
+    <button @onclick="TurnOffAutomatic">Toggle Automatic mode.</button>
+    <p>Automatic mode toggled: @_isAutomatic</p>
     <br/>
-    <p>@GameCounter</p>
+    <p>@_gameCounter</p>
 </div>
-
 
 @code {
     private readonly GameRound _game = new();
     private int _playerCount;
     private string _playerSelection = "1";
-    private string _playerName = "";
     private bool _gameInProgress;
     private readonly Players _dictionaryOfPlayers = new();
-    private int GameCounter;
-    private bool IsAutomatic;
-    private string winnerName;
-
-
+    private int _gameCounter;
+    private bool _isAutomatic;
+    private string _winnerName = "";
+    private bool _cardsDrawn;
+    private bool _cardsCompared;
+    private bool _winnerDeclared;
+    private CancellationTokenSource _cancellationTokenSource;
 
     private void StartGame()
     {
         _gameInProgress = true;
         int.TryParse(_playerSelection, out _playerCount);
 
-        for (int i = 0; i < _playerCount; i++)
-        {
-            _game.ListOfActivePlayers.Add(_dictionaryOfPlayers.PlayerNames[i]);
-        }
+// Initialize active players
+        _game.ListOfActivePlayers = _dictionaryOfPlayers.PlayerNames.Values.ToList();
 
         foreach (string playerName in _game.ListOfActivePlayers)
         {
@@ -97,11 +93,14 @@ else if (!_gameInProgress)
         {
             _game.RoundStart(name);
         }
+
+        _cardsDrawn = true;
+        _cardsCompared = false;
     }
 
     private void FindWinner()
     {
-        winnerName = _game.FindWinner();
+        _winnerName = _game.FindWinner();
         _game._PlayedCards.ClearPlay();
         _game.FindGameWinner(); // Check if the game has been won
 
@@ -109,50 +108,65 @@ else if (!_gameInProgress)
         {
             _gameInProgress = false; // Stop the game if won
         }
+
+        _cardsCompared = true;
+        _winnerDeclared = false;
     }
 
     private void DeclareWinner()
     {
-        _game.EndRound(_game._PlayerHands.HandQueue[winnerName]);
+        if (_game._PlayerHands.HandQueue.TryGetValue(_winnerName, out Hand winnerHand))
+        {
+            _game.EndRound(winnerHand);
+            _game.FindGameWinner();
+            _winnerDeclared = true;
+            _cardsDrawn = false;
+        }
     }
 
     private async Task Automatic()
     {
-        if (IsAutomatic)
-        {
-            while (_gameInProgress)
-            {
-                await Task.Delay(1);
-                StartRound();
-                StateHasChanged();
-                await Task.Delay(1);
-                StateHasChanged();
-                FindWinner();
-                StateHasChanged();
-            }
+        _cancellationTokenSource = new CancellationTokenSource();
+        CancellationToken token = _cancellationTokenSource.Token;
 
-            await Task.Delay(1000);
-            RefillDeck();
-            await Task.Delay(300);
-            StartGame();
-            await Task.Delay(1000);
-            GameCounter++;
-            Automatic();
+        while (_gameInProgress && _isAutomatic)
+        {
+            await Task.Delay(5, token);
+            StartRound();
+            StateHasChanged(); 
+            await Task.Delay(5, token);
+
+            FindWinner();
+            StateHasChanged(); 
+            await Task.Delay(5, token);
+        
+            DeclareWinner();
+            StateHasChanged(); 
+            await Task.Delay(5, token);
+
+            if (_game.GameWon)
+            {
+                await Task.Delay(1000);
+                RefillDeck(); 
+                await Task.Delay(300); 
+                StartGame(); 
+                await Task.Delay(1000); 
+                _gameCounter++; 
+                await Automatic(); 
+                break; 
+            }
         }
     }
 
-    public void TurnOffAutomatic()
+
+    private void TurnOffAutomatic()
     {
-        if (IsAutomatic)
+        _isAutomatic = !_isAutomatic;
+        if (!_isAutomatic && _cancellationTokenSource != null)
         {
-            IsAutomatic = false;
+            _cancellationTokenSource.Cancel();
         }
 
-        if (!IsAutomatic)
-        {
-            IsAutomatic = true;
-
-        }
         StateHasChanged();
     }
 
@@ -160,12 +174,12 @@ else if (!_gameInProgress)
     {
         _game._Deck.RebuildDeck();
 
-        foreach (KeyValuePair<string, Hand> player in _game._PlayerHands.HandQueue)
+        foreach (Hand player in _game._PlayerHands.HandQueue.Values)
         {
-            player.Value.Cards.Clear(); // Clear the Cards queue for each player
+            player.Cards.Clear(); // Clear the Cards queue for each player
         }
 
-        // Reset game data
+// Reset game data
         _game.GameCount = 0;
         _game.GameWon = false;
         _game.ListOfActivePlayers.Clear();

@@ -1,21 +1,17 @@
-namespace WarCardGame.services;
 using WarCardGame.models;
+
+namespace WarCardGame.services;
 
 public interface IGameRound
 {
-    public Deck _Deck { get; set; }
-    public Hand _Hand { get; set; }
-    public PlayedCards _PlayedCards { get; set; }
-    public PlayerHands _PlayerHands { get; set; }
-    public Players _Players { get; set; }
-    public int PlayerCount { get; set; }
-    public void DrawCards(string playerName);
-
-    public void StartGame(string playerName, int playerCount);
-
-    public void RoundStart(string playerName);
-
-    public string FindWinner();
-
-    public void EndRound(Hand winningHand);
+    Deck _Deck { get; set; }
+    Hand _Hand { get; set; }
+    PlayedCards _PlayedCards { get; set; }
+    PlayerHands _PlayerHands { get; set; }
+    int PlayerCount { get; set; }
+    void DrawCards(string playerName);
+    void StartGame(string playerName, int playerCount);
+    void RoundStart(string playerName);
+    string FindWinner();
+    void EndRound(Hand winningHand);
 }

@@ -2,8 +2,8 @@ namespace WarCardGame.models;
 
 public class PlayerHands
 {
+    private static readonly Random _rng = new();
     public Dictionary<string, Hand> HandQueue { get; set; } = new(); // Initialize here
-    private static Random _rng = new Random();
 
     public void AddPlayer(string playerName)
     {
@@ -12,8 +12,8 @@ public class PlayerHands
 
     public void ShuffleHand(Hand hand)
     {
-        List<Card> list = new List<Card>(hand.Cards);
-        
+        List<Card> list = new(hand.Cards);
+
         int n = list.Count;
         while (n > 1)
         {
@@ -23,11 +23,7 @@ public class PlayerHands
         }
 
         hand.Cards.Clear();
-        foreach (Card card in list)
-        {
-            hand.Cards.Enqueue(card);
-        }
-        
+        foreach (Card card in list) hand.Cards.Enqueue(card);
     }
 
     public void ResetHand(string playerName)
