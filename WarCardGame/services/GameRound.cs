@@ -51,8 +51,9 @@ public class GameRound : IGameRound
         GameCount++;
     }
 
-    public void FindWinner()
+    public string FindWinner()
     {
+        string winnerName = "";
         List<Card> cardsInPlay = new List<Card>();
 
         foreach (string playerName in ListOfActivePlayers)
@@ -68,13 +69,13 @@ public class GameRound : IGameRound
         {
             Console.WriteLine("Tie.");
             _PlayedCards.ClearPlay();
-            TieBreaker();
-        }
-        else if (cardsInPlay[0].Rank != cardsInPlay[1].Rank)
+            return TieBreaker();
+        } 
+        if (cardsInPlay[0].Rank != cardsInPlay[1].Rank)
         {
             Console.WriteLine("Winner.");
-
-            string winnerName = "";
+            
+            winnerName = "";
 
             foreach (var playedHand in _PlayedCards.PlayedHand)
             {
@@ -83,12 +84,13 @@ public class GameRound : IGameRound
                     winnerName = playedHand.Key;
                 }
             }
-            EndRound(_PlayerHands.HandQueue[winnerName]);
         }
+
+        return winnerName;
     }
 
 
-    public void TieBreaker()
+    public string TieBreaker()
     {
         List<Card> cardsInPlay = new List<Card>();
         List<string> tempList = ListOfActivePlayers.ToList();
@@ -114,7 +116,7 @@ public class GameRound : IGameRound
         if (allCannotContinue)
         {
             Console.WriteLine("No player has cards left.");
-            return;
+            return ListOfActivePlayers[0];
         }
 
         if (cardsInPlay.Count < 2)
@@ -154,8 +156,8 @@ public class GameRound : IGameRound
                     winnerName = playedHand.Key;
                 }
             }
-            EndRound(_PlayerHands.HandQueue[winnerName]);
         }
+        return winnerName;
     }
 
 

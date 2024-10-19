@@ -22,6 +22,9 @@ Please select the amount of players:
     <button @onclick="FindWinner"> Compare Cards </button>
     <br/>
     <br/>
+    <button @onclick="DeclareWinner"> Compare Cards </button>
+    <br/>
+    <br/>
     <button @onclick="Automatic"> Automatic </button>
     
     foreach (string playerName in _game.ListOfActivePlayers)
@@ -68,6 +71,7 @@ else if (!_gameInProgress)
     private readonly Players _dictionaryOfPlayers = new();
     private int GameCounter;
     private bool IsAutomatic;
+    private string winnerName;
 
 
 
@@ -97,7 +101,7 @@ else if (!_gameInProgress)
 
     private void FindWinner()
     {
-        _game.FindWinner();
+        winnerName = _game.FindWinner();
         _game._PlayedCards.ClearPlay();
         _game.FindGameWinner(); // Check if the game has been won
 
@@ -105,6 +109,11 @@ else if (!_gameInProgress)
         {
             _gameInProgress = false; // Stop the game if won
         }
+    }
+
+    private void DeclareWinner()
+    {
+        _game.EndRound(_game._PlayerHands.HandQueue[winnerName]);
     }
 
     private async Task Automatic()

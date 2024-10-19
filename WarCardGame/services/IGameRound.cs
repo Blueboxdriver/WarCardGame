@@ -15,7 +15,7 @@ public interface IGameRound
 
     public void RoundStart(string playerName);
 
-    public void FindWinner();
+    public string FindWinner();
 
     public void EndRound(Hand winningHand);
 }
