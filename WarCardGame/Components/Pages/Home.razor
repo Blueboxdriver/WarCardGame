@@ -72,18 +72,66 @@ else // If the game is not in progress, then we display our winner and offer the
 </div>
 
 @code {
-    private readonly GameRound _game = new(); // Initializes our service, allowing us to interface with the game.
-    private int _playerCount; // The amount of players starting off in the game.
-    private string _playerSelection = "2"; // The default selection of players.
-    private bool _gameInProgress; // A boolean reflecting whether the game is in progress or not.
-    private readonly Players _dictionaryOfPlayers = new(); // Creates a Players object so we can get our list of player names.
-    private int _gameCounter; // Unlike the Service, this game counter simply counts the amount of games that has been played.
-    private bool _isAutomatic; // A boolean that reflects the status of automatic mode.
-    private string _winnerName = ""; // A string that stores the string reflecting the winner's name from the service's findWinner method.
-    private bool _cardsDrawn; // A boolean reflecting what stage of the round the player is in and limits button functionality depending on its state.
-    private bool _cardsCompared; // A boolean reflecting what stage of the round the player is in and limits button functionality depending on its state.
-    private bool _winnerDeclared; // A boolean reflecting what stage of the round the player is in and limits button functionality depending on its state.
-    private CancellationTokenSource _cancellationTokenSource; // A cancellation token used to stop automatic mode when the toggle button is pressed.
+
+    /// <summary>
+    ///     A GameRound object representing the gameround service.
+    /// </summary>
+    private readonly GameRound _game = new();
+
+    /// <summary>
+    ///     The amount of players starting off in the game.
+    /// </summary>
+    private int _playerCount;
+
+    /// <summary>
+    ///     The default selection of players.
+    /// </summary>
+    private string _playerSelection = "2";
+
+    /// <summary>
+    ///     A boolean reflecting whether the game is in progress or not.
+    /// </summary>
+    private bool _gameInProgress;
+
+    /// <summary>
+    ///     A players object that is used to collect player names.
+    /// </summary>
+    private readonly Players _dictionaryOfPlayers = new();
+
+    /// <summary>
+    ///     Integer representing the total amount of games played.
+    /// </summary>
+    private int _gameCounter;
+
+    /// <summary>
+    ///     A boolean that reflects the status of automatic mode.
+    /// </summary>
+    private bool _isAutomatic;
+
+    /// <summary>
+    ///     A string that stores the string reflecting the winner's name from the service's findWinner method.
+    /// </summary>
+    private string _winnerName = "";
+
+    /// <summary>
+    ///     A boolean reflecting whether a player has drawn cards yet.
+    /// </summary>
+    private bool _cardsDrawn;
+
+    /// <summary>
+    ///     A boolean reflecting whether a player has compared cards yet.
+    /// </summary>
+    private bool _cardsCompared;
+
+    /// <summary>
+    ///     A boolean reflecting whether a player has had their cards compared and a winner has been determined.
+    /// </summary>
+    private bool _winnerDeclared;
+
+    /// <summary>
+    ///     A cancellation token used to stop automatic mode.
+    /// </summary>
+    private CancellationTokenSource _cancellationTokenSource;
 
     /// <summary>
     ///     Starts the game by collecting the playercounter, creating the list of players, and calling on the service to start
